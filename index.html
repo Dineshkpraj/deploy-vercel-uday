@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UDAY: Your Mental Wellness Companion</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better aesthetics and responsiveness */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 600px;
+            height: 80vh; /* Adjust height for better fit on various screens */
+            background-color: #ffffff;
+            border-radius: 1rem; /* Rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        #chat-messages {
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem; /* Space between messages */
+            scroll-behavior: smooth;
+        }
+        .message-wrapper {
+            display: flex;
+            align-items: flex-start; /* Align avatar and message content at the top */
+            gap: 0.5rem; /* Space between avatar and message bubble */
+        }
+        .user-message-wrapper {
+            align-self: flex-end;
+            flex-direction: row-reverse; /* Puts avatar on the right for user */
+        }
+        .bot-message-wrapper {
+            align-self: flex-start;
+            flex-direction: row; /* Puts avatar on the left for bot */
+        }
+
+        .message-avatar {
+            width: 32px; /* Small avatar size */
+            height: 32px;
+            border-radius: 50%; /* Circular avatar */
+            overflow: hidden;
+            flex-shrink: 0; /* Prevent avatar from shrinking */
+            background-color: #d1d5db; /* Placeholder background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.75rem;
+            color: #4b5563;
+        }
+        .message-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .message {
+            max-width: calc(80% - 32px - 0.5rem); /* Adjust max-width for avatar */
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem; /* Rounded corners for messages */
+            word-wrap: break-word;
+            flex-grow: 1; /* Allow message bubble to grow */
+        }
+        .user-message {
+            background-color: #3b82f6; /* Blue for user */
+            color: white;
+            border-bottom-right-radius: 0.25rem; /* Slightly less rounded on one corner */
+        }
+        .bot-message {
+            background-color: #e5e7eb; /* Light gray for bot */
+            color: #374151;
+            border-bottom-left-radius: 0.25rem; /* Slightly less rounded on one corner */
+        }
+        .sender-label {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+            display: block; /* Ensures it takes its own line */
+            font-size: 0.8rem; /* Smaller font for label */
+            opacity: 0.7; /* Slightly faded */
+        }
+        .user-message .sender-label {
+            text-align: right;
+            color: rgba(255, 255, 255, 0.8); /* Lighter color for user label */
+        }
+        .bot-message .sender-label {
+            text-align: left;
+            color: #4b5563; /* Darker color for bot label */
+        }
+
+        #chat-input-area {
+            display: flex;
+            padding: 1rem;
+            border-top: 1px solid #e5e7eb;
+            background-color: #f9fafb;
+        }
+        #user-input {
+            flex-grow: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.75rem;
+            outline: none;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        #user-input:focus {
+            border-color: #3b82f6;
+        }
+        #send-button {
+            margin-left: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            background-color: #2563eb; /* Darker blue */
+            color: white;
+            border: none;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        #send-button:hover {
+            background-color: #1d4ed8; /* Even darker blue on hover */
+            transform: translateY(-1px);
+        }
+        #send-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        /* Crisis Modal Styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            text-align: center;
+            position: relative;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+        .modal-content h3 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #dc2626; /* Red for crisis */
+            margin-bottom: 1rem;
+        }
+        .modal-content p {
+            margin-bottom: 1rem;
+            color: #4b5563;
+            line-height: 1.5;
+        }
+        .modal-content ul {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        .modal-content ul li {
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+        .modal-content button {
+            background-color: #ef4444; /* Red button */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+        .modal-content button:hover {
+            background-color: #dc2626;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #chat-container {
+                height: 95vh;
+                border-radius: 0.5rem;
+            }
+            #chat-messages {
+                padding: 1rem;
+            }
+            .message {
+                padding: 0.6rem 0.9rem;
+                border-radius: 0.6rem;
+            }
+            #chat-input-area {
+                padding: 0.75rem;
+            }
+            #user-input, #send-button {
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
+                border-radius: 0.6rem;
+            }
+            .modal-content {
+                max-width: 90%;
+                padding: 1.5rem;
+            }
+            .message-avatar {
+                width: 28px;
+                height: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat-messages"></div>
+        <div id="chat-input-area">
+            <input type="text" id="user-input" placeholder="Type your message...">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <!-- Crisis Modal -->
+    <div id="crisis-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Important: Immediate Support Needed</h3>
+            <p id="crisis-message">It sounds like you are in serious distress. It's vital that you speak to someone who can provide immediate support. Please reach out right now. Here are some 24/7 free and confidential resources:</p>
+            <ul>
+                <li>- KIRAN Mental Health Helpline: 1800-599-0019</li>
+                <li>- iCALL Psychosocial Helpline: 022-25521111</li>
+            </ul>
+            <p>Your safety is the most important thing. Please make the call.</p>
+            <button id="close-crisis-modal">I Understand</button>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const crisisModalOverlay = document.getElementById('crisis-modal-overlay');
+        const closeCrisisModalButton = document.getElementById('close-crisis-modal');
+
+        // The Recommender, CrisisManager, and Chatbot logic are now handled by the Python backend.
+        // The Screener logic remains on the frontend as it's a multi-turn interaction.
+
+        class Screener {
+            constructor() {
+                this.gad7_questions = [
+                    "Over the last 2 weeks, how often have you been bothered by feeling nervous, anxious, or on edge?",
+                    "How often have you not been able to stop or control worrying?",
+                    "How often have you been worrying too much about different things?",
+                    "How often have you had trouble relaxing?",
+                    "How often have you been so restless that it is hard to sit still?",
+                    "How often have you become easily annoyed or irritable?",
+                    "How often have you felt afraid as if something awful might happen?"
+                ];
+                this.answer_options = " (0=Not at all, 1=Several days, 2=More than half the days, 3=Nearly every day)";
+                this.currentQuestionIndex = 0;
+                this.totalScore = 0;
+                this.inScreening = false;
+            }
+
+            startScreening() {
+                this.inScreening = true;
+                this.currentQuestionIndex = 0;
+                this.totalScore = 0;
+                displayMessage('bot', "Okay, let's do a quick check-in. I'll ask 7 questions about how you've felt over the last 2 weeks. Please answer with a number from 0 to 3.");
+                setTimeout(() => this.askQuestion(), 1000); // Delay for better flow
+            }
+
+            askQuestion() {
+                if (this.currentQuestionIndex < this.gad7_questions.length) {
+                    const question = this.gad7_questions[this.currentQuestionIndex];
+                    displayMessage('bot', `Question ${this.currentQuestionIndex + 1}: ${question}${this.answer_options}`);
+                } else {
+                    this.finishScreening();
+                }
+            }
+
+            processAnswer(answer) {
+                const score = parseInt(answer);
+                if (!isNaN(score) && score >= 0 && score <= 3) {
+                    this.totalScore += score;
+                    this.currentQuestionIndex++;
+                    this.askQuestion();
+                } else {
+                    displayMessage('bot', "That doesn't seem to be a valid number. Please enter a number between 0 and 3.");
+                }
+            }
+
+            finishScreening() {
+                this.inScreening = false;
+                displayMessage('bot', "Thanks for sharing that with me. Here's a summary of your score:");
+                this.interpretScore(this.totalScore);
+                displayMessage('bot', "Remember, this is just a screening tool, not a diagnosis. It's a starting point for understanding your feelings.");
+            }
+
+            interpretScore(score) {
+                let interpretation = "";
+                if (score >= 0 && score <= 4) {
+                    interpretation = `Your score is ${score}, which suggests minimal anxiety. It's great that you're checking in with yourself.`;
+                } else if (score >= 5 && score <= 9) {
+                    interpretation = `Your score is ${score}, which suggests mild anxiety. It might be helpful to look into some relaxation techniques.`;
+                } else if (score >= 10 && score <= 14) {
+                    interpretation = `Your score is ${score}, which suggests moderate anxiety. It could be a good idea to talk about these feelings with a trusted friend, family member, or a professional.`;
+                } else {
+                    interpretation = `Your score is ${score}, which suggests severe anxiety. It's really important to talk to a mental health professional about what you're experiencing. They can provide the best support.`;
+                }
+                displayMessage('bot', interpretation);
+            }
+        }
+
+        // Global instance for Screener (it runs client-side)
+        const screener = new Screener();
+
+        function displayMessage(sender, message) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('message-wrapper');
+            
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            
+            const senderLabel = document.createElement('span');
+            senderLabel.classList.add('sender-label');
+
+            const avatarElement = document.createElement('div');
+            avatarElement.classList.add('message-avatar');
+            const avatarImg = document.createElement('img');
+            avatarImg.alt = sender === 'user' ? 'User Avatar' : 'Bot Avatar';
+
+            if (sender === 'user') {
+                messageWrapper.classList.add('user-message-wrapper');
+                messageElement.classList.add('user-message');
+                senderLabel.textContent = 'You:';
+                avatarImg.src = "https://placehold.co/32x32/1e40af/ffffff?text=%F0%9F%91%A4"; // Simple person emoji
+            } else {
+                messageWrapper.classList.add('bot-message-wrapper');
+                messageElement.classList.add('bot-message');
+                senderLabel.textContent = 'UDAY:';
+                avatarImg.src = "https://placehold.co/32x32/6b7280/ffffff?text=%F0%9F%A4%96"; // Simple robot emoji
+            }
+            
+            avatarElement.appendChild(avatarImg);
+
+            // Append the sender label first
+            messageElement.appendChild(senderLabel);
+
+            // Create a text node or span for the actual message content
+            const messageContent = document.createElement('span');
+            messageContent.innerHTML = message.replace(/\n/g, '<br>');
+            messageElement.appendChild(messageContent);
+
+            if (sender === 'user') {
+                messageWrapper.appendChild(messageElement);
+                messageWrapper.appendChild(avatarElement);
+            } else {
+                messageWrapper.appendChild(avatarElement);
+                messageWrapper.appendChild(messageElement);
+            }
+
+            chatMessages.appendChild(messageWrapper);
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
+        }
+
+        async function getBotResponseFromAPI(userText) {
+            try {
+                // Display a loading indicator
+                const loadingMessage = document.createElement('div');
+                loadingMessage.classList.add('message-wrapper', 'bot-message-wrapper');
+                loadingMessage.innerHTML = `
+                    <div class="message-avatar"><img src="https://placehold.co/32x32/6b7280/ffffff?text=%F0%9F%A4%96" alt="Bot Avatar"></div>
+                    <div class="message bot-message">
+                        <span class="sender-label">UDAY:</span>
+                        <span>Typing...</span>
+                    </div>
+                `;
+                chatMessages.appendChild(loadingMessage);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                const response = await fetch('/api/chat', { // Endpoint on Vercel
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: userText }),
+                });
+
+                // Remove loading indicator
+                chatMessages.removeChild(loadingMessage);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return data.response;
+            } catch (error) {
+                console.error('Error fetching bot response:', error);
+                // Return a user-friendly error message
+                return "I'm sorry, I'm having trouble connecting right now. Please try again later.";
+            }
+        }
+
+        async function sendMessage() {
+            const userText = userInput.value.trim();
+            if (userText === '') return;
+
+            displayMessage('user', userText);
+            userInput.value = ''; // Clear input
+
+            // Handle screening mode (client-side)
+            if (screener.inScreening) {
+                screener.processAnswer(userText);
+                return; // Stop further processing
+            }
+
+            // Handle special commands that trigger client-side actions or specific backend calls
+            if (userText.toLowerCase() === 'quit' || userText.toLowerCase() === 'exit' || userText.toLowerCase() === 'bye') {
+                displayMessage('bot', "Take care. Remember, I'm here if you need to talk.");
+                userInput.disabled = true;
+                sendButton.disabled = true;
+                return;
+            }
+
+            if (userText.toLowerCase().includes('screening') || userText.toLowerCase().includes('check-in')) {
+                screener.startScreening();
+                return;
+            }
+
+            // Otherwise, send message to backend API
+            const botResponse = await getBotResponseFromAPI(userText);
+            
+            // Check for crisis response from backend and display modal if needed
+            const crisisKeywords = ["serious distress", "vital that you speak to someone", "KIRAN Mental Health Helpline", "iCALL Psychosocial Helpline", "Your safety is the most important thing"];
+            const isCrisisResponse = crisisKeywords.some(keyword => botResponse.includes(keyword));
+
+            if (isCrisisResponse) {
+                document.getElementById('crisis-message').innerHTML = botResponse.replace(/\n/g, '<br>');
+                crisisModalOverlay.classList.add('show');
+            } else {
+                displayMessage('bot', botResponse);
+            }
+        }
+
+        // Event Listeners
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        closeCrisisModalButton.addEventListener('click', () => {
+            crisisModalOverlay.classList.remove('show');
+        });
+
+        // Initial greeting from the bot (fetched from backend)
+        window.onload = async () => {
+            // The initial greeting is hardcoded in the Python Chatbot class's get_greeting method.
+            // For a truly dynamic greeting, you'd need a separate endpoint for it,
+            // or just display it directly from the frontend. For now, we'll display a static greeting.
+            displayMessage('bot', "Hello! I'm UDAY, your AI companion for mental wellness. You can talk to me about anything on your mind. If you'd like to do a guided check-in, just type 'screening'. To exit, type 'quit'.");
+        };
+    </script>
+</body>
+</html>
